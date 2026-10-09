@@ -741,6 +741,14 @@ MAIL_FROM=tu_usuario@gmail.com
 APP_URL=http://localhost:5173
 ```
 
+### 12.1 Configuración del despliegue
+
+En producción, el frontend se publica en Vercel y consume la API de Render:
+
+- Frontend: `https://taller-mecanico-blue.vercel.app`
+- Backend: `https://tallermecanico-1.onrender.com`
+
+El frontend de producción usa la URL de Render definida en `frontend/src/services/api.js`; en Render, `FRONTEND_URL` debe ser `https://taller-mecanico-blue.vercel.app` (sin barra final). Después de desplegar cambios de código, confirma que Vercel y Render terminaron sus respectivos despliegues antes de probar el inicio de sesión.
 ---
 
 ## 13. Conclusión

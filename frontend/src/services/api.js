@@ -1,8 +1,12 @@
 import axios from 'axios'
 
+const apiBaseUrl = import.meta.env.PROD
+  ? 'https://tallermecanico-1.onrender.com/api'
+  : import.meta.env.VITE_API_URL || '/api'
+
 const apiClient = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || '/api',
-  timeout: 10000,
+  baseURL: apiBaseUrl,
+  timeout: 60000,
   headers: {
     Accept: 'application/json',
     'Content-Type': 'application/json',

@@ -9,7 +9,7 @@ const { validarConfiguracionTokens } = require("./security/tokens");
 
 const app = express();
 
-const origenFrontend = process.env.FRONTEND_URL;
+const origenFrontend = process.env.FRONTEND_URL?.trim().replace(/\/+$/, "");
 app.use(cors(origenFrontend ? { origin: origenFrontend } : undefined));
 app.use(express.json({ limit: "1mb" }));
 

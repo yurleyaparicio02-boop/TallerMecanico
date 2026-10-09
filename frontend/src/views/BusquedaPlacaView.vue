@@ -922,7 +922,7 @@ watch(
                 <div class="order-plate">{{ orden.vehiculo?.placa }}</div>
                 <div class="order-client"><div class="avatar small-avatar">{{ normalizarTexto(orden.vehiculo?.cliente?.nombre || 'CL').slice(0, 2).toUpperCase() }}</div><span>{{ normalizarTexto(orden.vehiculo?.cliente?.nombre) }} {{ normalizarTexto(orden.vehiculo?.cliente?.apellido) }}</span><span class="order-date">{{ formatoFecha(orden.fechaIngreso) }}</span></div>
                 <div class="order-card-footer"><strong>{{ formatoDinero(orden.monto) }}</strong><select :value="orden.estado" aria-label="Actualizar estado" @change="actualizarEstado(orden, $event)"><option v-for="estado in obtenerEstadosDisponibles(orden.estado)" :key="estado" :value="estado">{{ estado }}</option></select></div>
-              
+
                 <details class="order-edit">
                   <summary>Diagnóstico, trabajo y costos</summary>
                   <div class="order-edit-fields">

@@ -8,7 +8,7 @@ const Cliente = require("./models/Cliente");
 const Vehiculo = require("./models/Vehiculo");
 const OrdenReparacion = require("./models/OrdenReparacion");
 
-const CANTIDAD = 40;
+const CANTIDAD = 100;
 
 const nombres = [
   ["Laura", "Gómez"],
@@ -95,13 +95,13 @@ async function insertarDatosMasivos() {
   const identificadorLote = `${Date.now()}${randomInt(100000, 1000000)}`;
   const clientes = Array.from({ length: CANTIDAD }, (_, indice) => {
     const [nombre] = nombres[indice % nombres.length];
-    const apellido = apellidos[Math.floor(indice / nombres.length)];
+    const apellido = apellidos[Math.floor(indice / nombres.length) % apellidos.length];
     const numero = String(indice + 1).padStart(3, "0");
 
     return {
       nombre,
       apellido,
-      cedula: `98${identificadorLote}${numero}`,
+      cedula: `98${identificadorLote.slice(-15)}${numero}`,
       telefono: `300${identificadorLote.slice(-7)}${numero}`,
       email: `masivo.${identificadorLote}.${numero}@ejemplo.test`,
       direccion: `Calle ${10 + indice} # ${20 + indice}-${30 + indice}, Cali`,
@@ -135,7 +135,7 @@ async function insertarDatosMasivos() {
       monto,
     ] = ordenes[indice % ordenes.length];
     const variante =
-      variantesReparacion[Math.floor(indice / ordenes.length)];
+      variantesReparacion[Math.floor(indice / ordenes.length) % variantesReparacion.length];
 
     return {
       vehiculo: vehiculosInsertados[indice]._id,
