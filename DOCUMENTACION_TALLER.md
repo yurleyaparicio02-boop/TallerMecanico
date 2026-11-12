@@ -14,6 +14,8 @@
 6. Cómo se valida y protege la API.
 7. Cómo se instala, configura, inicia y verifica el proyecto.
 
+> **Novedad de esta versión:** el módulo **Clientes registrados** se integró en `components/` (`GestorClientesModal.vue`, `EditorClienteVehiculo.vue` y `ModalDialogo.vue` con componentes de Quasar y Vue 3 `<script setup>`) y su composable en `utils/useGestionClientes.js`. En el header ocupa el segundo lugar, entre *Buscar vehículo* y *Seguimiento*. La tabla de vehículos muestra el estado de reparación real de cada uno y ya no ofrece activar/desactivar.
+
 ### 1. Qué hace el sistema
 
 El sistema del taller se divide en dos aplicaciones que se comunican mediante HTTP y JSON:
@@ -47,18 +49,24 @@ El código de la interfaz está en `frontend/src`.
 | `router/index.js` | Declara las direcciones de la aplicación y una guardia de navegación que manda a iniciar sesión si no hay una sesión guardada. |
 | `views/LoginView.vue` | Pantalla para iniciar sesión. |
 | `views/RecuperarContrasenaView.vue` | Pantallas para pedir el enlace de recuperación y establecer una contraseña nueva desde el enlace. |
-| `views/BusquedaPlacaView.vue` | Vista principal del taller. Reúne búsqueda, fichas, registros, seguimiento, abonos e historial. Varias direcciones del router presentan esta misma vista en distintos modos. |
+| `views/BusquedaPlacaView.vue` | Vista principal del taller. Reúne la búsqueda, la ficha del vehículo, el registro, el seguimiento, los abonos y el historial. Varias direcciones del router presentan esta misma vista en distintos modos. |
+| `components/GestorClientesModal.vue` | Módulo **Clientes registrados**: sección integrada con dos pestañas (Clientes y Vehículos), buscador y acciones de editar/eliminar. Es un componente de presentación: recibe datos y emite eventos. |
+| `components/EditorClienteVehiculo.vue` | Formulario del diálogo para editar al propietario (y su vehículo cuando se edita desde la pestaña de vehículos). |
+| `components/BotonAccion.vue` | Componente reutilizable de botón de acción basado en `<q-btn>` de Quasar. |
+| `components/EstadoVacio.vue` | Componente reutilizable de estado vacío para listas y tablas sin resultados. |
+| `utils/useGestionClientes.js` | Estado y acciones del módulo de clientes: carga de datos, filtros, validación, guardado y borrado (vive fuera de la vista para mantenerla pequeña). |
 | `services/api.js` | Cliente Axios y funciones que traducen acciones de interfaz en solicitudes HTTP. Añade el token de sesión y convierte errores de API en mensajes manejables por la interfaz. |
-| `stores/auth.js` | Estado de autenticación: inicia y cierra sesión y conserva token y usuario en `sessionStorage`. |
+| `stores/auth.js` | Estado de autenticación: inicia y cierra sesión y conserva token y usuario con persistencia de Pinia. |
 | `stores/workshop.js` | Estado y acciones del taller: búsquedas, ficha seleccionada, órdenes activas, historial, transiciones y abonos. |
 | `utils/validation.js` | Validación compartida en el navegador, actualmente incluye la validación de correo. El backend valida de nuevo los datos; la validación visual no sustituye esa comprobación. |
+| `utils/texto.js` | `normalizarTexto()`: corrige caracteres heredados de una codificación incorrecta antes de mostrar datos de la base. |
 | `style.css` | Estilos globales y de la interfaz. |
 
 El router incluye `/login`, recuperación y restablecimiento de contraseña, búsqueda (`/`), ficha de vehículo, nueva orden, seguimiento e historial. Las rutas privadas se protegen en el navegador para mejorar el flujo de uso. Esa protección no reemplaza la autenticación de la API: el servidor valida también cada solicitud privada.
 
 `services/api.js` decide la URL base: en producción apunta a la API publicada; en desarrollo usa `VITE_API_URL` o `/api`. `vite.config.js` reenvía `/api` a `http://localhost:4000` durante el desarrollo local.
 
-Los archivos de `components/` contienen formularios Quasar independientes para cliente, vehículo, orden y avance de estado. En el código actual no aparecen importados por las vistas: el flujo principal implementa sus formularios y controles dentro de `BusquedaPlacaView.vue`. Se conservan como componentes disponibles, pero no conviene asumir que son el flujo activo sin comprobar sus usos.
+La carpeta `components/` mezcla dos tipos de archivos. `ModalDialogo.vue`, `GestorClientesModal.vue` y `EditorClienteVehiculo.vue` sí forman parte del flujo activo. En cambio, los formularios Quasar `RegistroClienteForm.vue`, `RegistroVehiculoForm.vue`, `RegistroOrdenForm.vue` y `ActualizarEstadoOrden.vue` no aparecen importados por las vistas: la vista del taller implementa sus propios formularios y controles. Se conservan como componentes disponibles, pero no conviene asumir que son el flujo activo sin comprobar sus usos.
 
 Pinia conserva el estado de trabajo, pero su persistencia está limitada a `role` y `searchMode`. El plugin `pinia-plugin-persistedstate` usa `localStorage` por defecto porque el store no configura otro almacenamiento; por eso esos dos campos sobreviven al cierre del navegador. El resto del store de taller permanece en memoria y vuelve a sus valores iniciales al recargar.
 
@@ -165,7 +173,7 @@ Todas las rutas de clientes, vehículos, órdenes e historial requieren autentic
 | `GET /api/clientes/cedula/:cedula/estado` | Consultar vehículos e historial de órdenes | Respuesta reducida; también requiere sesión. |
 | `POST`, `PUT /api/clientes/:id` | Crear o actualizar cliente | Cuerpo validado; cédula única. |
 | `DELETE /api/clientes/:id` | Eliminar cliente | Solo admin y sin vehículos relacionados. |
-| `GET /api/vehiculos` | Listar vehículos | Devuelve cliente poblado. |
+| `GET /api/vehiculos` | Listar vehículos | Devuelve cliente poblado y `estadoReparacion` (estado de su orden más reciente). |
 | `GET /api/vehiculos/:id` | Consultar vehículo por identificador | Requiere sesión; incluye datos del propietario. |
 | `GET /api/vehiculos/placa/:placa` | Buscar ficha por placa | Normaliza placa; incluye historial y propietario. |
 | `GET /api/vehiculos/placa/:placa/estado` | Consulta de estado reducido | En el código actual también requiere sesión. |
@@ -407,6 +415,11 @@ frontend/
 │  ├─ main.js
 │  ├─ style.css
 │  ├─ components/
+│  │  ├─ BotonAccion.vue
+│  │  ├─ EstadoVacio.vue
+│  │  ├─ ModalDialogo.vue
+│  │  ├─ GestorClientesModal.vue
+│  │  ├─ EditorClienteVehiculo.vue
 │  │  ├─ ActualizarEstadoOrden.vue
 │  │  ├─ RegistroClienteForm.vue
 │  │  ├─ RegistroOrdenForm.vue
@@ -419,6 +432,8 @@ frontend/
 │  │  ├─ auth.js
 │  │  └─ workshop.js
 │  ├─ utils/
+│  │  ├─ useGestionClientes.js
+│  │  ├─ texto.js
 │  │  └─ validation.js
 │  └─ views/
 │     ├─ BusquedaPlacaView.vue
@@ -616,13 +631,26 @@ La guardia `beforeEach()` evita entrar a páginas privadas sin token válido.
 Es la vista principal del taller:
 
 - búsqueda por placa/cliente
+- resumen interactivo por estado de órdenes (`En proceso`, `Recibidos`, `En diagnóstico`, `En reparación`, `Listos`)
 - registro de cliente/vehículo
 - creación de orden
 - seguimiento en columnas por estado
 - historial de trabajo
 - entregados
+- sección integrada de **Clientes registrados**
 
-La vista usa `workshop.js` para la lógica funcional del taller.
+La vista usa `workshop.js` para la lógica funcional del taller. La edición de propietarios y vehículos se delega en `components/GestorClientesModal.vue`, `components/EditorClienteVehiculo.vue` y `utils/useGestionClientes.js`.
+
+#### Módulo Clientes registrados (`src/components/` y `src/utils/`)
+
+El menú lateral izquierdo ordena las secciones así: **Buscar vehículo → Clientes registrados → Seguimiento → Historial → Entregados**. El módulo de clientes se muestra integrado en la vista principal, sin cambiar de URL.
+
+- **`GestorClientesModal.vue`** muestra dos pestañas: *Clientes* (propietario, documento, contacto, placas vinculadas y acciones) y *Vehículos* (vehículo, placa, propietario, kilometraje y **estado de reparación**). Incluye buscador por nombre, documento o placa. No tiene acciones de activar/desactivar: solo **Editar** y **Eliminar**.
+- **`EditorClienteVehiculo.vue`** edita al propietario (y al vehículo cuando se abre desde la pestaña de vehículos).
+- **`BotonAccion.vue`** y **`EstadoVacio.vue`** son componentes Quasar reutilizables para botones de acción y mensajes de listas vacías.
+- **`useGestionClientes.js`** concentra el estado (lista, filtro, carga, diálogo de edición) y las acciones (validar, guardar, eliminar), reutilizando el store `workshop.js`.
+
+El **estado de reparación** de cada vehículo lo entrega el backend en `GET /api/vehiculos`, en el campo `estadoReparacion`, tomado de la orden más reciente del vehículo (`Recibido`, `En Diagnóstico`, `En Reparación`, `Listo`, `Entregado`). Si no tiene órdenes, se muestra *Sin orden activa*. El backend consulta las órdenes existentes en lugar de editar los demás archivos del panel, de modo que la vista no necesita descargar toda la colección de órdenes.
 
 #### `src/views/LoginView.vue`
 

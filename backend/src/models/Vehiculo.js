@@ -24,6 +24,8 @@ const vehiculoSchema = new mongoose.Schema(
       ref: "Cliente",
       required: true,
     },
+    // Borrado lógico: un vehículo inactivo conserva sus órdenes pero no aparece en las búsquedas.
+    activo: { type: Boolean, default: true },
   },
   { timestamps: true },
 );

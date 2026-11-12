@@ -2,10 +2,10 @@ const Cliente = require("../models/Cliente");
 const Vehiculo = require("../models/Vehiculo");
 const OrdenReparacion = require("../models/OrdenReparacion");
 
-// GET /api/clientes - listar todos
+// GET /api/clientes - listar todos (incluye inactivos: es el panel de gestión)
 exports.obtenerClientes = async (req, res) => {
   try {
-    const clientes = await Cliente.find().sort({ createdAt: -1 });
+    const clientes = await Cliente.find().sort({ createdAt: -1 }).lean();
     res.json(clientes);
   } catch (error) {
     res
@@ -21,7 +21,8 @@ exports.obtenerCliente = async (req, res) => {
     if (!cliente) {
       return res.status(404).json({ mensaje: "Cliente no encontrado" });
     }
-    res.json(cliente);
+    const vehiculos = await Vehiculo.find({ cliente: cliente._id }).sort({ createdAt: -1 });
+    res.json({ cliente, vehiculos });
   } catch (error) {
     res
       .status(500)
@@ -33,10 +34,10 @@ exports.obtenerCliente = async (req, res) => {
 exports.buscarPorCedula = async (req, res) => {
   try {
     const cliente = await Cliente.findOne({ cedula: req.params.cedula.trim() });
-    if (!cliente) {
+    if (!cliente || cliente.activo === false) {
       return res.status(404).json({ mensaje: "Propietario no registrado" });
     }
-    const vehiculos = await Vehiculo.find({ cliente: cliente._id }).sort({
+    const vehiculos = await Vehiculo.find({ cliente: cliente._id, activo: { $ne: false } }).sort({
       createdAt: -1,
     });
     res.json({ cliente, vehiculos });
@@ -53,13 +54,13 @@ exports.consultarVehiculosPorCedula = async (req, res) => {
   try {
     const cliente = await Cliente.findOne({
       cedula: req.params.cedula.trim(),
-    }).select("_id");
+    }).select("_id activo");
 
-    if (!cliente) {
+    if (!cliente || cliente.activo === false) {
       return res.status(404).json({ mensaje: "Propietario no registrado" });
     }
 
-    const vehiculos = await Vehiculo.find({ cliente: cliente._id })
+    const vehiculos = await Vehiculo.find({ cliente: cliente._id, activo: { $ne: false } })
       .select("placa marca modelo anio")
       .sort({ createdAt: -1 })
       .lean();
@@ -114,12 +115,31 @@ exports.crearCliente = async (req, res) => {
 // PUT /api/clientes/:id - actualizar datos validados
 exports.actualizarCliente = async (req, res) => {
   try {
-    const cliente = await Cliente.findByIdAndUpdate(req.params.id, { $set: req.body }, { new: true, runValidators: true });
+    const cliente = await Cliente.findByIdAndUpdate(req.params.id, { $set: req.body }, { returnDocument: "after", runValidators: true });
     if (!cliente) return res.status(404).json({ mensaje: "Cliente no encontrado." });
     res.json(cliente);
   } catch (error) {
     if (error.code === 11000) return res.status(409).json({ mensaje: "Ya existe un propietario con esa cédula." });
     res.status(400).json({ mensaje: "No fue posible actualizar el cliente.", error: error.message });
+  }
+};
+
+// PATCH /api/clientes/:id/estado - activar o desactivar (borrado lógico)
+exports.cambiarEstadoCliente = async (req, res) => {
+  try {
+    const activo = req.body?.activo;
+    if (typeof activo !== "boolean") {
+      return res.status(400).json({ mensaje: "El campo 'activo' debe ser verdadero o falso." });
+    }
+    const cliente = await Cliente.findByIdAndUpdate(req.params.id, { $set: { activo } }, { returnDocument: "after" });
+    if (!cliente) return res.status(404).json({ mensaje: "Cliente no encontrado." });
+
+    // Al desactivar un cliente sus vehículos tampoco deben aparecer en las búsquedas.
+    if (!activo) await Vehiculo.updateMany({ cliente: cliente._id }, { $set: { activo: false } });
+
+    res.json(cliente);
+  } catch (error) {
+    res.status(400).json({ mensaje: "No fue posible cambiar el estado del cliente.", error: error.message });
   }
 };
 
@@ -129,7 +149,7 @@ exports.eliminarCliente = async (req, res) => {
     const cliente = await Cliente.findById(req.params.id);
     if (!cliente) return res.status(404).json({ mensaje: "Cliente no encontrado." });
     const tieneVehiculos = await Vehiculo.exists({ cliente: cliente._id });
-    if (tieneVehiculos) return res.status(409).json({ mensaje: "No se puede eliminar un cliente que todavía tiene vehículos registrados. Reasigna o elimina primero los vehículos sin historial." });
+    if (tieneVehiculos) return res.status(409).json({ mensaje: "No se puede eliminar un cliente que todavía tiene vehículos registrados. Desactívalo o elimina primero los vehículos sin historial." });
     await cliente.deleteOne();
     res.json({ mensaje: "Cliente eliminado." });
   } catch (error) {

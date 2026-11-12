@@ -4,6 +4,10 @@ const c = require("../controllers/vehiculo.controller");
 const { autenticar, soloAdmin } = require("../middleware/autenticar");
 const { validarVehiculo, validarPlacaParam } = require("../validations/validations/vehiculoValidation");
 const { validarId } = require("../validations/validations/idValidation");
+const validarEstado = (req, res, next) => {
+  if (typeof req.body?.activo !== "boolean") return res.status(400).json({ mensaje: "El campo 'activo' debe ser verdadero o falso." });
+  next();
+};
 
 router.use(autenticar);
 router.get("/", c.obtenerVehiculos);
@@ -12,6 +16,7 @@ router.get("/placa/:placa", validarPlacaParam, c.buscarPorPlaca); // ¡important
 router.get("/:id", validarId, c.obtenerVehiculo);
 router.post("/", validarVehiculo, c.crearVehiculo);
 router.put("/:id", validarId, validarVehiculo, c.actualizarVehiculo);
+router.patch("/:id/estado", validarId, validarEstado, c.cambiarEstadoVehiculo);
 router.delete("/:id", validarId, soloAdmin, c.eliminarVehiculo);
 
 module.exports = router;

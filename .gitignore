@@ -42,3 +42,5 @@ coverage/
 
 # Datos locales / mongo
 *.local
+.README.md
+README.md

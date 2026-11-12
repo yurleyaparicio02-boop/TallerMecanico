@@ -10,6 +10,8 @@ const clienteSchema = new mongoose.Schema(
     telefono: { type: String, required: true, trim: true, minlength: 7, maxlength: 24, match: /^[+()\d .-]+$/ },
     email: { type: String, trim: true, lowercase: true, maxlength: 254, validate: (valor) => !valor || esCorreoValido(valor) },
     direccion: { type: String, trim: true, maxlength: 200, validate: (valor) => !valor || valor.length >= 5 },
+    // Borrado lógico: un cliente inactivo conserva su historial pero no aparece en las búsquedas.
+    activo: { type: Boolean, default: true },
   },
   { timestamps: true }, // crea automáticamente createdAt y updatedAt
 );

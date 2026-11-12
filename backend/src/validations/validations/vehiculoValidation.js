@@ -1,5 +1,5 @@
 const mongoose = require("mongoose");
-const ALLOWED = new Set(["placa", "marca", "modelo", "anio", "color", "cliente", "kilometraje"]);
+const ALLOWED = new Set(["placa", "marca", "modelo", "anio", "color", "cliente", "kilometraje", "activo"]);
 const own = (object, key) => Object.prototype.hasOwnProperty.call(object, key);
 function rechazar(res, errores) { return res.status(400).json({ mensaje: "Revisa los datos del vehículo.", errores }); }
 function normalizarPlaca(valor) { return typeof valor === "string" ? valor.toUpperCase().replace(/[\s-]/g, "") : valor; }
